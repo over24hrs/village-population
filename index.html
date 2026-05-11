@@ -63,23 +63,42 @@
 
         // โหลดข้อมูลจากไฟล์ data.csv
         // โค้ดใหม่ — ใช้ fetch() แล้วค่อยส่งให้ Papa.parse แปลง
+// โค้ดใหม่ — เพิ่ม debug + แสดง error บนหน้าจอ
 fetch("data.csv")
     .then(response => {
-        if (!response.ok) throw new Error("โหลดไฟล์ไม่สำเร็จ");
+        console.log("fetch status:", response.status, response.ok);
+        if (!response.ok) throw new Error("HTTP " + response.status + " — โหลดไฟล์ไม่สำเร็จ");
         return response.text();
     })
     .then(csvText => {
+        console.log("CSV ได้รับข้อมูล", csvText.length, "ตัวอักษร");
+        console.log("ตัวอย่าง 200 ตัวแรก:", csvText.substring(0, 200));
+
         const results = Papa.parse(csvText, {
             header: true,
-            skipEmptyLines: true
+            skipEmptyLines: true,
+            encoding: "UTF-8"
         });
+
+        console.log("จำนวนแถว:", results.data.length);
+        console.log("ชื่อคอลัมน์:", results.meta.fields);
+
+        if (results.data.length === 0) {
+            document.getElementById('tableBody').innerHTML =
+                `<tr><td colspan="9" class="px-6 py-4 text-center text-red-500">
+                    โหลดไฟล์ได้แต่ไม่พบข้อมูล — ตรวจสอบ encoding ของไฟล์ CSV
+                </td></tr>`;
+            return;
+        }
+
         populationData = results.data;
         renderTable(populationData);
     })
     .catch(err => {
-        document.getElementById('tableBody').innerHTML = 
+        console.error("fetch error:", err);
+        document.getElementById('tableBody').innerHTML =
             `<tr><td colspan="9" class="px-6 py-4 text-center text-red-500">
-                ไม่สามารถโหลดข้อมูลได้: ${err.message}
+                ❌ ${err.message}
             </td></tr>`;
     });
 

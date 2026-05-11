@@ -65,35 +65,27 @@
         // โค้ดใหม่ — ใช้ fetch() แล้วค่อยส่งให้ Papa.parse แปลง
 // โค้ดใหม่ — เพิ่ม debug + แสดง error บนหน้าจอ
 fetch("data.csv")
-    .then(response => {
-        console.log("fetch status:", response.status, response.ok);
-        if (!response.ok) throw new Error("HTTP " + response.status + " — โหลดไฟล์ไม่สำเร็จ");
-        return response.text();
-    })
-    .then(csvText => {
-        console.log("CSV ได้รับข้อมูล", csvText.length, "ตัวอักษร");
-        console.log("ตัวอย่าง 200 ตัวแรก:", csvText.substring(0, 200));
+    // โค้ดใหม่ — ลบ BOM + กรองแถวขยะ #REF! ออก
+.then(csvText => {
+    // ลบ BOM ออกจากต้นไฟล์
+    const cleanCsv = csvText.replace(/^\uFEFF/, '');
 
-        const results = Papa.parse(csvText, {
-            header: true,
-            skipEmptyLines: true,
-            encoding: "UTF-8"
-        });
+    const results = Papa.parse(cleanCsv, {
+        header: true,
+        skipEmptyLines: true,
+        encoding: "UTF-8"
+    });
 
-        console.log("จำนวนแถว:", results.data.length);
-        console.log("ชื่อคอลัมน์:", results.meta.fields);
+    // กรองเฉพาะแถวที่มีชื่อจริง ไม่เอาแถว #REF! / #VALUE! / ว่าง
+    populationData = results.data.filter(row => {
+        const name = row['ชื่อ - สกุล'] || '';
+        return name.trim() !== '' 
+            && !name.includes('#REF!') 
+            && !name.includes('#VALUE!');
+    });
 
-        if (results.data.length === 0) {
-            document.getElementById('tableBody').innerHTML =
-                `<tr><td colspan="9" class="px-6 py-4 text-center text-red-500">
-                    โหลดไฟล์ได้แต่ไม่พบข้อมูล — ตรวจสอบ encoding ของไฟล์ CSV
-                </td></tr>`;
-            return;
-        }
-
-        populationData = results.data;
-        renderTable(populationData);
-    })
+    renderTable(populationData);
+})
     .catch(err => {
         console.error("fetch error:", err);
         document.getElementById('tableBody').innerHTML =
@@ -118,6 +110,7 @@ fetch("data.csv")
                 tr.className = "hover:bg-blue-50 transition-colors";
                 
                 // ดึงข้อมูลตามหัวคอลัมน์ในไฟล์ CSV แบบครบถ้วน
+                const muNo = row['หมู่ที่'] || row['\uFEFFหมู่ที่'] || '9';
                 const houseNo = row['บ้านเลขที่'] || '-';
                 const idCard = row['เลขที่บัตรประชาชน'] || '-';
                 const name = row['ชื่อ - สกุล'] || '-';

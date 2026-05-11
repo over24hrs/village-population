@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ระบบค้นหาข้อมูลประชากร บ้านใหม่เจริญไพร หมู่ 9</title>
+    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
+    <style>
+        body { font-family: 'Sarabun', sans-serif; }
+        /* ปรับแต่ง Scrollbar ให้เลื่อนซ้ายขวาได้สวยงาม */
+        .table-container::-webkit-scrollbar { height: 8px; }
+        .table-container::-webkit-scrollbar-thumb { background-color: #cbd5e1; border-radius: 4px; }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen p-4 md:p-8">
+
+    <div class="max-w-[95%] mx-auto">
+        <div class="bg-white rounded-xl shadow-md p-6 mb-6 flex flex-col md:flex-row items-center gap-6">
+            <img src="logo.png" alt="โลโก้บ้านใหม่เจริญไพร" class="w-24 h-24 object-contain">
+            <div class="text-center md:text-left">
+                <h1 class="text-3xl font-bold text-gray-800">ระบบฐานข้อมูลประชากร (ส่วนบุคคล)</h1>
+                <p class="text-lg text-gray-600 mt-1">บ้านใหม่เจริญไพร หมู่ 9 ต.ฝายกวาง อ.เชียงคำ จ.พะเยา</p>
+            </div>
+        </div>
+
+        <div class="bg-white rounded-xl shadow-md p-6 mb-6">
+            <label for="searchInput" class="block text-sm font-medium text-gray-700 mb-2">ค้นหาข้อมูล (ชื่อ, นามสกุล, บ้านเลขที่ หรือ เลขบัตรประชาชน 13 หลัก)</label>
+            <input type="text" id="searchInput" placeholder="พิมพ์คำค้นหาที่นี่..." 
+                   class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors">
+            <div class="mt-2 text-sm text-gray-500">พบข้อมูลทั้งหมด <span id="countDisplay" class="font-bold text-blue-600">0</span> รายการ</div>
+        </div>
+
+        <div class="bg-white rounded-xl shadow-md overflow-hidden">
+            <div class="overflow-x-auto table-container">
+                <table class="min-w-full divide-y divide-gray-200 whitespace-nowrap">
+                    <thead class="bg-blue-50">
+                        <tr>
+                            <th class="px-4 py-3 text-left text-sm font-semibold text-gray-700">บ้านเลขที่</th>
+                            <th class="px-4 py-3 text-left text-sm font-semibold text-gray-700">เลขบัตรประชาชน</th>
+                            <th class="px-4 py-3 text-left text-sm font-semibold text-gray-700">ชื่อ - สกุล</th>
+                            <th class="px-4 py-3 text-left text-sm font-semibold text-gray-700">อายุ</th>
+                            <th class="px-4 py-3 text-left text-sm font-semibold text-gray-700">วันเกิด</th>
+                            <th class="px-4 py-3 text-left text-sm font-semibold text-gray-700">สถานะทะเบียนบ้าน</th>
+                            <th class="px-4 py-3 text-left text-sm font-semibold text-gray-700">สิทธิการรักษา</th>
+                            <th class="px-4 py-3 text-left text-sm font-semibold text-gray-700">ระดับการศึกษา</th>
+                            <th class="px-4 py-3 text-left text-sm font-semibold text-gray-700">โรคประจำตัว</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tableBody" class="bg-white divide-y divide-gray-200">
+                        <tr>
+                            <td colspan="9" class="px-6 py-8 text-center text-gray-500">กำลังโหลดข้อมูล...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let populationData = [];
+
+        // โหลดข้อมูลจากไฟล์ data.csv
+        Papa.parse("data.csv", {
+            download: true,
+            header: true,
+            skipEmptyLines: true,
+            complete: function(results) {
+                populationData = results.data;
+                renderTable(populationData);
+            },
+            error: function(err) {
+                document.getElementById('tableBody').innerHTML = `<tr><td colspan="9" class="px-6 py-4 text-center text-red-500">ไม่สามารถโหลดข้อมูลได้ (ตรวจสอบว่าไฟล์ชื่อ data.csv ถูกต้อง)</td></tr>`;
+            }
+        });
+
+        function renderTable(data) {
+            const tbody = document.getElementById('tableBody');
+            const countDisplay = document.getElementById('countDisplay');
+            tbody.innerHTML = '';
+            countDisplay.innerText = data.length;
+
+            if (data.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="9" class="px-6 py-8 text-center text-gray-500">ไม่พบข้อมูลที่ค้นหา</td></tr>`;
+                return;
+            }
+
+            data.forEach(row => {
+                const tr = document.createElement('tr');
+                tr.className = "hover:bg-blue-50 transition-colors";
+                
+                // ดึงข้อมูลตามหัวคอลัมน์ในไฟล์ CSV แบบครบถ้วน
+                const houseNo = row['บ้านเลขที่'] || '-';
+                const idCard = row['เลขที่บัตรประชาชน'] || '-';
+                const name = row['ชื่อ - สกุล'] || '-';
+                const ageYear = row['อายุ(ปี)'] || '0';
+                const ageMonth = row['อายุ (เดือน)'] || '0';
+                const dob = row['วันเกิด'] || '-';
+                const homeReg = row['ทะเบียนบ้าน'] || '-';
+                const medical = row['สิทธิการรักษา'] || '-';
+                const edu = row['ระดับการศึกษา'] || '-';
+                const disease = row['โรคประจำตัว'] || '-';
+
+                // จัดรูปแบบอายุให้ดูง่ายขึ้น
+                const ageText = `${ageYear} ปี ${ageMonth} เดือน`;
+
+                tr.innerHTML = `
+                    <td class="px-4 py-3 text-sm text-gray-900">${houseNo}</td>
+                    <td class="px-4 py-3 text-sm font-mono text-gray-700 tracking-wider">${idCard}</td>
+                    <td class="px-4 py-3 text-sm font-medium text-gray-900">${name}</td>
+                    <td class="px-4 py-3 text-sm text-gray-900">${ageText}</td>
+                    <td class="px-4 py-3 text-sm text-gray-900">${dob}</td>
+                    <td class="px-4 py-3 text-sm text-gray-600 truncate max-w-xs" title="${homeReg}">${homeReg.substring(0, 30)}${homeReg.length > 30 ? '...' : ''}</td>
+                    <td class="px-4 py-3 text-xs text-gray-700">${medical}</td>
+                    <td class="px-4 py-3 text-sm text-gray-700">${edu

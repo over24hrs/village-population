@@ -18,7 +18,7 @@
 
     <div class="max-w-[95%] mx-auto">
         <div class="bg-white rounded-xl shadow-md p-6 mb-6 flex flex-col md:flex-row items-center gap-6">
-            <img src="logo.png" alt="โลโก้บ้านใหม่เจริญไพร" class="w-24 h-24 object-contain">
+            <img src="logo_png.png" alt="โลโก้บ้านใหม่เจริญไพร" class="w-24 h-24 object-contain">
             <div class="text-center md:text-left">
                 <h1 class="text-3xl font-bold text-gray-800">ระบบฐานข้อมูลประชากร (ส่วนบุคคล)</h1>
                 <p class="text-lg text-gray-600 mt-1">บ้านใหม่เจริญไพร หมู่ 9 ต.ฝายกวาง อ.เชียงคำ จ.พะเยา</p>
@@ -62,18 +62,26 @@
         let populationData = [];
 
         // โหลดข้อมูลจากไฟล์ data.csv
-        Papa.parse("data.csv", {
-            download: true,
+        // โค้ดใหม่ — ใช้ fetch() แล้วค่อยส่งให้ Papa.parse แปลง
+fetch("data.csv")
+    .then(response => {
+        if (!response.ok) throw new Error("โหลดไฟล์ไม่สำเร็จ");
+        return response.text();
+    })
+    .then(csvText => {
+        const results = Papa.parse(csvText, {
             header: true,
-            skipEmptyLines: true,
-            complete: function(results) {
-                populationData = results.data;
-                renderTable(populationData);
-            },
-            error: function(err) {
-                document.getElementById('tableBody').innerHTML = `<tr><td colspan="9" class="px-6 py-4 text-center text-red-500">ไม่สามารถโหลดข้อมูลได้ (ตรวจสอบว่าไฟล์ชื่อ data.csv ถูกต้อง)</td></tr>`;
-            }
+            skipEmptyLines: true
         });
+        populationData = results.data;
+        renderTable(populationData);
+    })
+    .catch(err => {
+        document.getElementById('tableBody').innerHTML = 
+            `<tr><td colspan="9" class="px-6 py-4 text-center text-red-500">
+                ไม่สามารถโหลดข้อมูลได้: ${err.message}
+            </td></tr>`;
+    });
 
         function renderTable(data) {
             const tbody = document.getElementById('tableBody');

@@ -59,78 +59,92 @@
     </div>
 
     <script>
-        let populationData = [];
+    let populationData = [];
 
-        // โหลดข้อมูลจากไฟล์ data.csv
-        // โค้ดใหม่ — ใช้ fetch() แล้วค่อยส่งให้ Papa.parse แปลง
-// โค้ดใหม่ — เพิ่ม debug + แสดง error บนหน้าจอ
-fetch("data.csv")
-    // โค้ดใหม่ — ลบ BOM + กรองแถวขยะ #REF! ออก
-.then(csvText => {
-    // ลบ BOM ออกจากต้นไฟล์
-    const cleanCsv = csvText.replace(/^\uFEFF/, '');
+    fetch("data.csv")
+        .then(r => r.text())           // ← บรรทัดนี้ขาดหายในโค้ดเดิม
+        .then(csvText => {
+            const cleanCsv = csvText.replace(/^\uFEFF/, '');
 
-    const results = Papa.parse(cleanCsv, {
-        header: true,
-        skipEmptyLines: true,
-        encoding: "UTF-8"
+            const results = Papa.parse(cleanCsv, {
+                header: true,
+                skipEmptyLines: true,
+                encoding: "UTF-8"
+            });
+
+            populationData = results.data.filter(row => {
+                const name = row['ชื่อ - สกุล'] || '';
+                return name.trim() !== ''
+                    && !name.includes('#REF!')
+                    && !name.includes('#VALUE!');
+            });
+
+            renderTable(populationData);
+        })
+        .catch(err => {
+            console.error("fetch error:", err);
+            document.getElementById('tableBody').innerHTML =
+                `<tr><td colspan="9" class="px-6 py-4 text-center text-red-500">
+                    ❌ ${err.message}
+                </td></tr>`;
+        });
+
+    function renderTable(data) {
+        const tbody = document.getElementById('tableBody');
+        const countDisplay = document.getElementById('countDisplay');
+        tbody.innerHTML = '';
+        countDisplay.innerText = data.length;
+
+        if (data.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="9" class="px-6 py-8 text-center text-gray-500">ไม่พบข้อมูลที่ค้นหา</td></tr>`;
+            return;
+        }
+
+        data.forEach(row => {
+            const tr = document.createElement('tr');
+            tr.className = "hover:bg-blue-50 transition-colors";
+
+            const houseNo  = row['บ้านเลขที่'] || '-';
+            const idCard   = row['เลขที่บัตรประชาชน'] || '-';
+            const name     = row['ชื่อ - สกุล'] || '-';
+            const ageYear  = row['อายุ(ปี)'] || '0';
+            const ageMonth = row['อายุ (เดือน)'] || '0';
+            const dob      = row['วันเกิด'] || '-';
+            const homeReg  = row['ทะเบียนบ้าน'] || '-';
+            const medical  = row['สิทธิการรักษา'] || '-';
+            const edu      = row['ระดับการศึกษา'] || '-';
+            const disease  = row['โรคประจำตัว'] || '-';
+
+            const ageText = `${ageYear} ปี ${ageMonth} เดือน`;
+
+            tr.innerHTML = `
+                <td class="px-4 py-3 text-sm text-gray-900">${houseNo}</td>
+                <td class="px-4 py-3 text-sm font-mono text-gray-700 tracking-wider">${idCard}</td>
+                <td class="px-4 py-3 text-sm font-medium text-gray-900">${name}</td>
+                <td class="px-4 py-3 text-sm text-gray-900">${ageText}</td>
+                <td class="px-4 py-3 text-sm text-gray-900">${dob}</td>
+                <td class="px-4 py-3 text-sm text-gray-600">${homeReg}</td>
+                <td class="px-4 py-3 text-xs text-gray-700">${medical}</td>
+                <td class="px-4 py-3 text-sm text-gray-700">${edu}</td>
+                <td class="px-4 py-3 text-sm text-gray-700">${disease}</td>
+            `;
+            tbody.appendChild(tr);
+        });
+    }
+
+    document.getElementById('searchInput').addEventListener('input', function () {
+        const q = this.value.trim().toLowerCase();
+        if (!q) {
+            renderTable(populationData);
+            return;
+        }
+        const filtered = populationData.filter(row => {
+            return (row['ชื่อ - สกุล'] || '').toLowerCase().includes(q)
+                || (row['บ้านเลขที่'] || '').toString().includes(q)
+                || (row['เลขที่บัตรประชาชน'] || '').includes(q);
+        });
+        renderTable(filtered);
     });
-
-    // กรองเฉพาะแถวที่มีชื่อจริง ไม่เอาแถว #REF! / #VALUE! / ว่าง
-    populationData = results.data.filter(row => {
-        const name = row['ชื่อ - สกุล'] || '';
-        return name.trim() !== '' 
-            && !name.includes('#REF!') 
-            && !name.includes('#VALUE!');
-    });
-
-    renderTable(populationData);
-})
-    .catch(err => {
-        console.error("fetch error:", err);
-        document.getElementById('tableBody').innerHTML =
-            `<tr><td colspan="9" class="px-6 py-4 text-center text-red-500">
-                ❌ ${err.message}
-            </td></tr>`;
-    });
-
-        function renderTable(data) {
-            const tbody = document.getElementById('tableBody');
-            const countDisplay = document.getElementById('countDisplay');
-            tbody.innerHTML = '';
-            countDisplay.innerText = data.length;
-
-            if (data.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="9" class="px-6 py-8 text-center text-gray-500">ไม่พบข้อมูลที่ค้นหา</td></tr>`;
-                return;
-            }
-
-            data.forEach(row => {
-                const tr = document.createElement('tr');
-                tr.className = "hover:bg-blue-50 transition-colors";
-                
-                // ดึงข้อมูลตามหัวคอลัมน์ในไฟล์ CSV แบบครบถ้วน
-                const muNo = row['หมู่ที่'] || row['\uFEFFหมู่ที่'] || '9';
-                const houseNo = row['บ้านเลขที่'] || '-';
-                const idCard = row['เลขที่บัตรประชาชน'] || '-';
-                const name = row['ชื่อ - สกุล'] || '-';
-                const ageYear = row['อายุ(ปี)'] || '0';
-                const ageMonth = row['อายุ (เดือน)'] || '0';
-                const dob = row['วันเกิด'] || '-';
-                const homeReg = row['ทะเบียนบ้าน'] || '-';
-                const medical = row['สิทธิการรักษา'] || '-';
-                const edu = row['ระดับการศึกษา'] || '-';
-                const disease = row['โรคประจำตัว'] || '-';
-
-                // จัดรูปแบบอายุให้ดูง่ายขึ้น
-                const ageText = `${ageYear} ปี ${ageMonth} เดือน`;
-
-                tr.innerHTML = `
-                    <td class="px-4 py-3 text-sm text-gray-900">${houseNo}</td>
-                    <td class="px-4 py-3 text-sm font-mono text-gray-700 tracking-wider">${idCard}</td>
-                    <td class="px-4 py-3 text-sm font-medium text-gray-900">${name}</td>
-                    <td class="px-4 py-3 text-sm text-gray-900">${ageText}</td>
-                    <td class="px-4 py-3 text-sm text-gray-900">${dob}</td>
-                    <td class="px-4 py-3 text-sm text-gray-600 truncate max-w-xs" title="${homeReg}">${homeReg.substring(0, 30)}${homeReg.length > 30 ? '...' : ''}</td>
-                    <td class="px-4 py-3 text-xs text-gray-700">${medical}</td>
-                    <td class="px-4 py-3 text-sm text-gray-700">${edu
+</script>
+</body>
+</html>
